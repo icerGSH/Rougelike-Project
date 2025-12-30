@@ -5,22 +5,35 @@ using UnityEngine;
 public class MiniMap : MonoBehaviour
 {
 
-    [System.Serializable]
-    public class FloorData
-    {
-        public int floorIndex;      // 楼层编号
-        public float worldXMin;     // 该楼层世界 X 最小
-        public float worldXMax;     // 该楼层世界 X 最大
-        public RectTransform uiLine;// 对应 UI 线
-    }
-
-    public List<FloorData> floors;
-    public Transform player;
     public RectTransform playerIcon;
+    public Transform player;
+
     public int currentFloor;
 
-    void UpdateMiniMap()
+    List<FloorData> Floors => GameManager.Instance.floors;
+
+    public void ChangeFloor(int floor)
     {
+        currentFloor = floor;
+        RefreshFloorVisual();
+        UpdateMiniMap();
+    }
+
+    void RefreshFloorVisual()
+    {
+        foreach (var f in Floors)
+        {
+            var img = f.miniMapLine.GetComponent<UnityEngine.UI.Image>();
+            img.color = (f.floorIndex == currentFloor)
+                ? Color.white
+                : new Color(1, 1, 1, 0.3f);
+        }
+    }
+
+    public void UpdateMiniMap()
+    {
+        var floors = Floors;
+
         if (floors == null || floors.Count == 0) return;
         if (currentFloor < 0 || currentFloor >= floors.Count) return;
 
@@ -32,17 +45,12 @@ public class MiniMap : MonoBehaviour
             player.position.x
         );
 
-        RectTransform line = floor.uiLine;
+        RectTransform line = floor.miniMapLine;
         Rect rect = line.rect;
 
-        // 在 uiLine 本地坐标中算位置
         float localX = Mathf.Lerp(rect.xMin, rect.xMax, t);
-        Vector3 localPos = new Vector3(localX, 0, 0);
+        Vector3 worldPos = line.TransformPoint(new Vector3(localX, 0, 0));
 
-        // 转成世界坐标
-        Vector3 worldPos = line.TransformPoint(localPos);
-
-        // 再转成 icon 的父 UI 坐标
         RectTransform parent = playerIcon.parent as RectTransform;
         Vector2 anchoredPos;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -53,14 +61,9 @@ public class MiniMap : MonoBehaviour
         );
 
         playerIcon.anchoredPosition = anchoredPos;
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        
+        //Debug.Log($"X={player.position.x}, min={floor.worldXMin}, max={floor.worldXMax}");
     }
 
-    // Update is called once per frame
     void Update()
     {
         UpdateMiniMap();
